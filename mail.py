@@ -2,6 +2,7 @@ import os
 import random
 import string
 import json
+import requests
 from datetime import datetime
 # import sqlite3
 # from sqlite3 import Error
@@ -18,6 +19,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
+mg_api_key = os.environ.get('MAILGUN_API_KEY')
+drop_route_id = os.environ.get('MAILGUN_DROP_ROUTE')
+fwd_route_id = os.environ.get('MAILGUN_FWD_ROUTE')
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -25,10 +29,9 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     active = db.Column(db.Boolean, nullable=False, default=True)
     created = db.Column(db.String(80), nullable=False)
-    updated = db.Column(db.String(80), nullable=False)
+    updated = db.Column(db.String(80))
 
-    def __init__(self, id, username, alias, active, created, updated):
-        self.id = id
+    def __init__(self, username, alias, active, created, updated):
         self.username = username
         self.alias = alias
         self.active = active
@@ -62,18 +65,105 @@ def derive_username():
     return name.lower()
 
 
+def get_mailgun_drop_route():
+    global mg_api_key
+    global drop_route_id
+    r = requests.get(
+        "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
+        auth=("api", str(mg_api_key)))
+    # r = requests.get(
+    #     "http://127.0.0.1:5000/v1/user")
+
+    # return jsonify(r.json())
+    route_exp = r.json()["route"]["expression"]
+    route_recipient = route_exp.partition('match_recipient("(')[2]
+    route_recipient = route_recipient.partition(')@mg.38d0f91a.tk")')[0]
+    print(route_recipient.split('|'))
+    # return route_exp
+    return route_recipient.split('|')
+
+
+def update_mailgun_drop_route(oper, username):
+    global mg_api_key
+    global drop_route_id
+    route_recipients = get_mailgun_drop_route()
+    if oper == "add":
+        route_recipients.append(username)
+    elif oper == "del":
+        if username in set(route_recipients):
+            route_recipients.remove(username)
+    print(route_recipients)
+    # return jsonify(route_recipients)
+    recipient_list = "|".join(route_recipients)
+    match_recipient = 'match_recipient("(' + \
+        recipient_list + ')@mg.38d0f91a.tk")'
+
+    print(match_recipient)
+    r = requests.put(
+        "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
+        auth=("api", str(mg_api_key)),
+        data={"expression": match_recipient})
+
+    return ""
+
+
+def get_mailgun_fwd_route():
+    global mg_api_key
+    global fwd_route_id
+    r = requests.get(
+        "https://api.mailgun.net/v3/routes/" + str(fwd_route_id),
+        auth=("api", str(mg_api_key)))
+    # r = requests.get(
+    #     "http://127.0.0.1:5000/v1/user")
+    
+    # return jsonify(r.json())
+    route_exp = r.json()["route"]["expression"]
+    route_recipient = route_exp.partition('match_recipient("(')[2]
+    route_recipient = route_recipient.partition(')@mg.38d0f91a.tk")')[0]
+    print(route_recipient.split('|'))
+    # return route_exp
+    return route_recipient.split('|')
+
+
+def update_mailgun_fwd_route(oper, username):
+    global mg_api_key
+    global fwd_route_id
+    route_recipients = get_mailgun_fwd_route()
+    if oper == "add":
+        route_recipients.append(username)
+    elif oper == "del":
+        if username in set(route_recipients):
+            route_recipients.remove(username)
+    print(route_recipients)
+    # return jsonify(route_recipients)
+    recipient_list = "|".join(route_recipients)
+    match_recipient = 'match_recipient("(' + \
+        recipient_list + ')@mg.38d0f91a.tk")'
+
+    print(match_recipient)
+    r = requests.put(
+        "https://api.mailgun.net/v3/routes/" + str(fwd_route_id),
+        auth=("api", str(mg_api_key)),
+        data={"expression": match_recipient})
+
+    return ""
+
+
 # endpoint to create new user
 @app.route('/v1/user', methods=['POST'])
 def add_user():
     username = derive_username()
     created = datetime.now()
+    updated = created
     alias = request.json['alias']
     active = request.json['active']
 
-    new_user = User(username, alias, active, created)
+    new_user = User(username, alias, active, created, updated)
 
     db.session.add(new_user)
     db.session.commit()
+
+    r = update_mailgun_fwd_route("add", username)
 
     return user_schema.jsonify(new_user)
 
@@ -97,13 +187,28 @@ def user_detail(id):
 @app.route("/v1/user/<id>", methods=["PUT"])
 def user_update(id):
     user = User.query.get(id)
-    active = request.json['active']
+    old_active_status = user.active
+    username = user.username
+    new_active_status = request.json['active']
+    alias = request.json['alias']
     updated = datetime.now()
 
-    user.active = active
+    user.active = new_active_status
+    user.alias = alias
     user.updated = updated
 
     db.session.commit()
+
+    # adding the username to the relevant list when the status is toggled
+    if old_active_status == True and  new_active_status == False:
+        print("dropping the user " + username)
+        update_mailgun_fwd_route("del", username)
+        update_mailgun_drop_route("add", username)
+    elif old_active_status == False and new_active_status == True:
+        print("fwding the user " + username)
+        update_mailgun_drop_route("del", username)
+        update_mailgun_fwd_route("add", username)
+
     return user_schema.jsonify(user)
 
 
