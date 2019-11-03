@@ -22,6 +22,7 @@ ma = Marshmallow(app)
 mg_api_key = os.environ.get('MAILGUN_API_KEY')
 drop_route_id = os.environ.get('MAILGUN_DROP_ROUTE')
 fwd_route_id = os.environ.get('MAILGUN_FWD_ROUTE')
+mail_domain = os.environ.get('MAILGUN_MAIL_DOMAIN')
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -68,6 +69,7 @@ def derive_username():
 def get_mailgun_drop_route():
     global mg_api_key
     global drop_route_id
+    global mail_domain
     r = requests.get(
         "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
         auth=("api", str(mg_api_key)))
@@ -77,7 +79,7 @@ def get_mailgun_drop_route():
     # return jsonify(r.json())
     route_exp = r.json()["route"]["expression"]
     route_recipient = route_exp.partition('match_recipient("(')[2]
-    route_recipient = route_recipient.partition(')@mg.38d0f91a.tk")')[0]
+    route_recipient = route_recipient.partition(')@' + str(mail_domain) + '")')[0]
     print(route_recipient.split('|'))
     # return route_exp
     return route_recipient.split('|')
@@ -96,7 +98,7 @@ def update_mailgun_drop_route(oper, username):
     # return jsonify(route_recipients)
     recipient_list = "|".join(route_recipients)
     match_recipient = 'match_recipient("(' + \
-        recipient_list + ')@mg.38d0f91a.tk")'
+        recipient_list + ')@' + str(mail_domain) + '")'
 
     print(match_recipient)
     r = requests.put(
@@ -119,7 +121,8 @@ def get_mailgun_fwd_route():
     # return jsonify(r.json())
     route_exp = r.json()["route"]["expression"]
     route_recipient = route_exp.partition('match_recipient("(')[2]
-    route_recipient = route_recipient.partition(')@mg.38d0f91a.tk")')[0]
+    route_recipient = route_recipient.partition(
+        ')@' + str(mail_domain) + '")')[0]
     print(route_recipient.split('|'))
     # return route_exp
     return route_recipient.split('|')
@@ -138,7 +141,7 @@ def update_mailgun_fwd_route(oper, username):
     # return jsonify(route_recipients)
     recipient_list = "|".join(route_recipients)
     match_recipient = 'match_recipient("(' + \
-        recipient_list + ')@mg.38d0f91a.tk")'
+        recipient_list + ')@' + str(mail_domain) + '")'
 
     print(match_recipient)
     r = requests.put(
