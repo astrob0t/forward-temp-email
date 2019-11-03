@@ -12,5 +12,6 @@
 
 # create ENV variables
     MAILGUN_API_KEY -> mailgun private key
+    MAILGUN_MAIL_DOMAIN -> email domain for the temporary emails
     MAILGUN_DROP_ROUTE -> id of the dropping route
     MAILGUN_FWD_ROUTE -> id of the forwarding route
