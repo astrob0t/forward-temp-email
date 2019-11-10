@@ -152,8 +152,14 @@ def update_mailgun_fwd_route(oper, username):
     return ""
 
 
+# error handler
+@app.errorhandler(404)
+def not_found(e):
+    api_status = {"success": False}
+    return jsonify(api_status)
+
 # endpoint to create new user
-@app.route('/v1/user', methods=['POST'])
+@app.route('/tempmail/v1/user', methods=['POST'])
 def add_user():
     username = derive_username()
     created = datetime.now()
@@ -172,7 +178,7 @@ def add_user():
 
 
 # endpoint to show all users
-@app.route("/v1/user", methods=["GET"])
+@app.route("/tempmail/v1/user", methods=["GET"])
 def get_user():
     all_users = User.query.all()
     result = users_schema.dump(all_users)
@@ -180,14 +186,14 @@ def get_user():
 
 
 # endpoint to get user detail by id
-@app.route("/v1/user/<id>", methods=["GET"])
+@app.route("/tempmail/v1/user/<id>", methods=["GET"])
 def user_detail(id):
     user = User.query.get(id)
     return user_schema.jsonify(user)
 
 
 # endpoint to update user
-@app.route("/v1/user/<id>", methods=["PUT"])
+@app.route("/tempmail/v1/user/<id>", methods=["PUT"])
 def user_update(id):
     user = User.query.get(id)
     old_active_status = user.active
