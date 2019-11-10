@@ -182,7 +182,12 @@ def add_user():
 def get_user():
     all_users = User.query.all()
     result = users_schema.dump(all_users)
+    result.sort(key=sort_by_key, reverse=True)
     return jsonify(result)
+
+
+def sort_by_key(val):
+    return val['id']
 
 
 # endpoint to get user detail by id
