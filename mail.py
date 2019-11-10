@@ -9,9 +9,11 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flask_cors import CORS, cross_origin
 
 
 app = Flask(__name__)
+CORS(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
     os.path.join(basedir, 'master.sqlite3')
@@ -160,6 +162,7 @@ def not_found(e):
 
 # endpoint to create new user
 @app.route('/tempmail/v1/user', methods=['POST'])
+@cross_origin(allow_headers=['*'], origins=['*'])
 def add_user():
     username = derive_username()
     created = datetime.now()

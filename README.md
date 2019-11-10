@@ -1,4 +1,5 @@
 # Install the following python packages
+    $ pip install flask_cors
     $ pip install flask_sqlalchemy
     $ pip install flask_marshmallow
     $ pip install marshmallow-sqlalchemy
