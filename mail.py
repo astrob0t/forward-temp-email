@@ -64,7 +64,6 @@ def derive_username():
     name = random.choice(first_names) + random.choice(username_chars) + \
         random.choice(last_names) + name_extra
 
-    # print(name.lower())
     return name.lower()
 
 
@@ -75,14 +74,10 @@ def get_mailgun_drop_route():
     r = requests.get(
         "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
         auth=("api", str(mg_api_key)))
-    # r = requests.get(
-    #     "http://127.0.0.1:5000/v1/user")
-
     # return jsonify(r.json())
     route_exp = r.json()["route"]["expression"]
     route_recipient = route_exp.partition('match_recipient("(')[2]
     route_recipient = route_recipient.partition(')@' + str(mail_domain) + '")')[0]
-    print(route_recipient.split('|'))
     # return route_exp
     return route_recipient.split('|')
 
@@ -96,13 +91,11 @@ def update_mailgun_drop_route(oper, username):
     elif oper == "del":
         if username in set(route_recipients):
             route_recipients.remove(username)
-    print(route_recipients)
     # return jsonify(route_recipients)
     recipient_list = "|".join(route_recipients)
     match_recipient = 'match_recipient("(' + \
         recipient_list + ')@' + str(mail_domain) + '")'
 
-    print(match_recipient)
     r = requests.put(
         "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
         auth=("api", str(mg_api_key)),
@@ -117,15 +110,12 @@ def get_mailgun_fwd_route():
     r = requests.get(
         "https://api.mailgun.net/v3/routes/" + str(fwd_route_id),
         auth=("api", str(mg_api_key)))
-    # r = requests.get(
-    #     "http://127.0.0.1:5000/v1/user")
     
     # return jsonify(r.json())
     route_exp = r.json()["route"]["expression"]
     route_recipient = route_exp.partition('match_recipient("(')[2]
     route_recipient = route_recipient.partition(
         ')@' + str(mail_domain) + '")')[0]
-    print(route_recipient.split('|'))
     # return route_exp
     return route_recipient.split('|')
 
@@ -139,13 +129,11 @@ def update_mailgun_fwd_route(oper, username):
     elif oper == "del":
         if username in set(route_recipients):
             route_recipients.remove(username)
-    print(route_recipients)
     # return jsonify(route_recipients)
     recipient_list = "|".join(route_recipients)
     match_recipient = 'match_recipient("(' + \
         recipient_list + ')@' + str(mail_domain) + '")'
 
-    print(match_recipient)
     r = requests.put(
         "https://api.mailgun.net/v3/routes/" + str(fwd_route_id),
         auth=("api", str(mg_api_key)),
@@ -218,11 +206,11 @@ def user_update(id):
 
     # adding the username to the relevant list when the status is toggled
     if old_active_status == True and  new_active_status == False:
-        print("dropping the user " + username)
+        # dropping the user
         update_mailgun_fwd_route("del", username)
         update_mailgun_drop_route("add", username)
     elif old_active_status == False and new_active_status == True:
-        print("fwding the user " + username)
+        # fwding the user
         update_mailgun_drop_route("del", username)
         update_mailgun_fwd_route("add", username)
 
