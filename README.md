@@ -1,7 +1,11 @@
-# Install the following python packages
+# insitiate a virtualENV and install the following python packages
+    $ python3 -m venv .venv
+    $ pip install requests
+    $ pip install flask
+    $ pip install flask_cors
     $ pip install flask_sqlalchemy
     $ pip install flask_marshmallow
-    $ pip install marshmallow-sqlalchemy
+    $ pip install marshmallow_sqlalchemy
 
 # Generate SQLite database
 ### enter into python interactive shell
