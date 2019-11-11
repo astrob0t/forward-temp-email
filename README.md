@@ -48,7 +48,8 @@ stderr_logfile=/var/log/<app_name>/tempmail.err.log
 stdout_logfile=/var/log/<app_name>/tempmail.out.log
 ```
 
-    [create the supervisor log and output directory and files](#setup-supervisor-log-and-output)
+[create the supervisor log and output directory and files](#setup-supervisor-log-and-output)
+    
     $ sudo service supervisor restart
 
 #### setup supervisor log and output
