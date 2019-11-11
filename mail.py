@@ -2,7 +2,6 @@ import os
 import random
 import string
 import json
-import requests
 from datetime import datetime
 # import sqlite3
 # from sqlite3 import Error
@@ -10,6 +9,7 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS, cross_origin
+import mailgun 
 
 
 app = Flask(__name__)
@@ -21,10 +21,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-mg_api_key = os.environ.get('MAILGUN_API_KEY')
-drop_route_id = os.environ.get('MAILGUN_DROP_ROUTE')
-fwd_route_id = os.environ.get('MAILGUN_FWD_ROUTE')
-mail_domain = os.environ.get('MAILGUN_MAIL_DOMAIN')
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -67,81 +63,6 @@ def derive_username():
     return name.lower()
 
 
-def get_mailgun_drop_route():
-    global mg_api_key
-    global drop_route_id
-    global mail_domain
-    r = requests.get(
-        "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
-        auth=("api", str(mg_api_key)))
-    # return jsonify(r.json())
-    route_exp = r.json()["route"]["expression"]
-    route_recipient = route_exp.partition('match_recipient("(')[2]
-    route_recipient = route_recipient.partition(')@' + str(mail_domain) + '")')[0]
-    # return route_exp
-    return route_recipient.split('|')
-
-
-def update_mailgun_drop_route(oper, username):
-    global mg_api_key
-    global drop_route_id
-    route_recipients = get_mailgun_drop_route()
-    if oper == "add":
-        route_recipients.append(username)
-    elif oper == "del":
-        if username in set(route_recipients):
-            route_recipients.remove(username)
-    # return jsonify(route_recipients)
-    recipient_list = "|".join(route_recipients)
-    match_recipient = 'match_recipient("(' + \
-        recipient_list + ')@' + str(mail_domain) + '")'
-
-    r = requests.put(
-        "https://api.mailgun.net/v3/routes/" + str(drop_route_id),
-        auth=("api", str(mg_api_key)),
-        data={"expression": match_recipient})
-
-    return ""
-
-
-def get_mailgun_fwd_route():
-    global mg_api_key
-    global fwd_route_id
-    r = requests.get(
-        "https://api.mailgun.net/v3/routes/" + str(fwd_route_id),
-        auth=("api", str(mg_api_key)))
-    
-    # return jsonify(r.json())
-    route_exp = r.json()["route"]["expression"]
-    route_recipient = route_exp.partition('match_recipient("(')[2]
-    route_recipient = route_recipient.partition(
-        ')@' + str(mail_domain) + '")')[0]
-    # return route_exp
-    return route_recipient.split('|')
-
-
-def update_mailgun_fwd_route(oper, username):
-    global mg_api_key
-    global fwd_route_id
-    route_recipients = get_mailgun_fwd_route()
-    if oper == "add":
-        route_recipients.append(username)
-    elif oper == "del":
-        if username in set(route_recipients):
-            route_recipients.remove(username)
-    # return jsonify(route_recipients)
-    recipient_list = "|".join(route_recipients)
-    match_recipient = 'match_recipient("(' + \
-        recipient_list + ')@' + str(mail_domain) + '")'
-
-    r = requests.put(
-        "https://api.mailgun.net/v3/routes/" + str(fwd_route_id),
-        auth=("api", str(mg_api_key)),
-        data={"expression": match_recipient})
-
-    return ""
-
-
 # error handler
 @app.errorhandler(404)
 def not_found(e):
@@ -163,7 +84,8 @@ def add_user():
     db.session.add(new_user)
     db.session.commit()
 
-    r = update_mailgun_fwd_route("add", username)
+    mg = mailgun.MailGun('add', username)
+    r = mg.update_fwd_route(mg.operation, mg.username)
 
     return user_schema.jsonify(new_user)
 
@@ -195,11 +117,9 @@ def user_update(id):
     old_active_status = user.active
     username = user.username
     new_active_status = request.json['active']
-    # alias = request.json['alias']
     updated = datetime.now()
 
     user.active = new_active_status
-    # user.alias = alias
     user.updated = updated
 
     db.session.commit()
@@ -207,15 +127,16 @@ def user_update(id):
     # adding the username to the relevant list when the status is toggled
     if old_active_status == True and  new_active_status == False:
         # dropping the user
-        update_mailgun_fwd_route("del", username)
-        update_mailgun_drop_route("add", username)
+        mg = mailgun.MailGun('', username)
+        mg.update_fwd_route("del", mg.username)
+        mg.update_drop_route("add", mg.username)
     elif old_active_status == False and new_active_status == True:
         # fwding the user
-        update_mailgun_drop_route("del", username)
-        update_mailgun_fwd_route("add", username)
+        mg = mailgun.MailGun('', username)
+        mg.update_drop_route("del", mg.username)
+        mg.update_fwd_route("add", mg.username)
 
     return user_schema.jsonify(user)
-
 
 
 if __name__ == "__main__":
