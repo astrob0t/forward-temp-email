@@ -19,3 +19,40 @@
     MAILGUN_MAIL_DOMAIN -> email domain for the temporary emails
     MAILGUN_DROP_ROUTE -> id of the dropping route
     MAILGUN_FWD_ROUTE -> id of the forwarding route
+
+# start the app in ubuntu server
+    $ export LC_ALL=C.UTF-8
+    $ export LANG=C.UTF-8
+    $ export FLASK_APP=mail.py
+    $ flask run --host=0.0.0.0
+
+### setup gunicorn
+    activate the python venv
+    $ pip install gunicorn
+    $ gunicorn -w 3 mail:app
+
+### setup supervisor
+    $ sudo apt install supervisor
+    $ sudo nano /etc/supervisor/conf.d/tempmail.conf
+
+```conf
+[program:tempmail]
+directory=/home/<username>/<src_directory>
+command=/home/<username>/<src_directory>/venv/bin/gunicorn -w 3 -b :5000 mail:app
+user=<username>
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stderr_logfile=/var/log/<app_name>/tempmail.err.log
+stdout_logfile=/var/log/<app_name>/tempmail.out.log
+```
+
+    [create the supervisor log and output directory and files](#setup-supervisor-log-and-output)
+    $ sudo service supervisor restart
+
+#### setup supervisor log and output
+    $ sudo mkdir -p /var/log/`app_name`
+    $ sudo touch /var/log/`app_name`/tempmail.err.log
+    $ sudo touch /var/log/`app_name`/tempmail.out.log
+

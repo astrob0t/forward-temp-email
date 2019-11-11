@@ -195,11 +195,11 @@ def user_update(id):
     old_active_status = user.active
     username = user.username
     new_active_status = request.json['active']
-    alias = request.json['alias']
+    # alias = request.json['alias']
     updated = datetime.now()
 
     user.active = new_active_status
-    user.alias = alias
+    # user.alias = alias
     user.updated = updated
 
     db.session.commit()
