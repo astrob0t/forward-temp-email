@@ -84,8 +84,8 @@ def add_user():
     db.session.add(new_user)
     db.session.commit()
 
-    mg = mailgun.MailGun('add', username)
-    r = mg.update_fwd_route(mg.operation, mg.username)
+    mg = mailgun.MailGun('add', 'forward', username)
+    r = mg.update_route(mg.operation, mg.route, mg.username)
 
     return user_schema.jsonify(new_user)
 
@@ -127,14 +127,14 @@ def user_update(id):
     # adding the username to the relevant list when the status is toggled
     if old_active_status == True and  new_active_status == False:
         # dropping the user
-        mg = mailgun.MailGun('', username)
-        mg.update_fwd_route("del", mg.username)
-        mg.update_drop_route("add", mg.username)
+        mg = mailgun.MailGun('', '', username)
+        mg.update_route("del", "forward", mg.username)
+        mg.update_route("add", "drop", mg.username)
     elif old_active_status == False and new_active_status == True:
         # fwding the user
-        mg = mailgun.MailGun('', username)
-        mg.update_drop_route("del", mg.username)
-        mg.update_fwd_route("add", mg.username)
+        mg = mailgun.MailGun('', '', username)
+        mg.update_route("del", "drop", mg.username)
+        mg.update_route("add", "forward", mg.username)
 
     return user_schema.jsonify(user)
 
