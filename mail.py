@@ -53,8 +53,8 @@ def derive_username():
     username_chars = '._'
     random.seed = (os.urandom(1024))
 
-    first_names = json.loads(open('fname.json').read())
-    last_names = json.loads(open('lname.json').read())
+    first_names = json.loads(open('assets/fname.json').read())
+    last_names = json.loads(open('assets/lname.json').read())
 
     name_extra = ''.join(random.choice(string.digits))
     name = random.choice(first_names) + random.choice(username_chars) + \
